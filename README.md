@@ -89,4 +89,4 @@ Tipos de nó (`network_nodes.kind`): `depot` (estação de distribuição), `roo
 
 ---
 
-MIT · sky.m3d.pro
+sky.m3d.pro
