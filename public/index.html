@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>sky.m3d.pro · droneDrop v0.2 — Gestão de Espaço Aéreo Urbano</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root{
+  --bg:#f2f8ff; --bg2:#e6f2ff; --card:rgba(255,255,255,.86); --solid:#ffffff;
+  --line:#cfe4fb; --line2:#a9cdf3; --ink:#0f2544; --dim:#4a6b93; --mute:#7d97b8;
+  --acc:#0ea5e9; --acc2:#6366f1; --mint:#10b981; --sun:#f59e0b; --rose:#f43f5e; --grape:#a855f7;
+  --r:16px; --sh:0 8px 24px rgba(23,74,131,.10),0 2px 6px rgba(23,74,131,.06);
+  --font:'Segoe UI',system-ui,-apple-system,Roboto,sans-serif; --mono:'Cascadia Code',Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:var(--font);color:var(--ink);overflow:hidden;
+  background:
+   radial-gradient(900px 520px at 8% -6%,#d9f0ff 0%,transparent 60%),
+   radial-gradient(900px 520px at 96% 4%,#e6e1ff 0%,transparent 58%),
+   radial-gradient(700px 500px at 50% 108%,#d6fbf0 0%,transparent 60%),var(--bg)}
+::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-thumb{background:#bcd6f2;border-radius:9px}
+button{font-family:var(--font);cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{font-family:var(--font);background:#fff;border:1px solid var(--line2);color:var(--ink);border-radius:10px;padding:8px 10px;font-size:12.5px;outline:none;width:100%}
+input:focus,select:focus,textarea:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(14,165,233,.16)}
+label{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.07em;display:block;margin:9px 0 3px;font-weight:700}
+.hidden{display:none!important}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh);backdrop-filter:blur(12px)}
+.btn{background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff;padding:9px 15px;border-radius:11px;font-size:12.5px;font-weight:700;display:inline-flex;align-items:center;gap:7px;box-shadow:0 4px 12px rgba(14,165,233,.28);transition:.15s}
+.btn:hover{transform:translateY(-1px);filter:brightness(1.06)}
+.btn.sec{background:#fff;color:var(--ink);border:1px solid var(--line2);box-shadow:none}
+.btn.mint{background:linear-gradient(135deg,#10b981,#059669);box-shadow:0 4px 12px rgba(16,185,129,.28)}
+.btn.sun{background:linear-gradient(135deg,#f59e0b,#f97316);box-shadow:0 4px 12px rgba(245,158,11,.3)}
+.btn.rose{background:linear-gradient(135deg,#f43f5e,#e11d48);box-shadow:0 4px 12px rgba(244,63,94,.3)}
+.btn.sm{padding:5px 10px;font-size:11px;border-radius:9px}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:800;padding:3px 9px;border-radius:20px;letter-spacing:.04em}
+.b-ok{background:rgba(16,185,129,.14);color:#047857;border:1px solid rgba(16,185,129,.35)}
+.b-info{background:rgba(14,165,233,.14);color:#0369a1;border:1px solid rgba(14,165,233,.35)}
+.b-warn{background:rgba(245,158,11,.16);color:#b45309;border:1px solid rgba(245,158,11,.4)}
+.b-red{background:rgba(244,63,94,.14);color:#be123c;border:1px solid rgba(244,63,94,.35)}
+.b-grape{background:rgba(168,85,247,.14);color:#7e22ce;border:1px solid rgba(168,85,247,.35)}
+/* ---------- shell ---------- */
+#app{position:fixed;inset:0;display:flex;flex-direction:column}
+header#top{height:58px;display:flex;align-items:center;gap:12px;padding:0 14px;background:rgba(255,255,255,.82);border-bottom:1px solid var(--line);backdrop-filter:blur(14px);z-index:40}
+.mark{width:34px;height:34px;border-radius:11px;background:linear-gradient(135deg,#0ea5e9,#6366f1);display:flex;align-items:center;justify-content:center;font-size:17px;box-shadow:0 6px 16px rgba(14,165,233,.35);color:#fff}
+.brand b{font-size:14.5px}.brand div{font-size:10px;color:var(--dim)}
+#top .sp{flex:1}
+.proj{width:190px;padding:6px 9px;font-size:12px}
+.chip{display:flex;align-items:center;gap:7px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:5px 10px;font-size:11.5px;box-shadow:var(--sh)}
+.av{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#0ea5e9);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
+main#grid{flex:1;display:grid;grid-template-columns:250px minmax(0,1fr) 330px;min-height:0}
+aside{padding:10px;display:flex;flex-direction:column;gap:10px;overflow:auto;min-height:0}
+aside.left{border-right:1px solid var(--line)}
+aside.right{border-left:1px solid var(--line)}
+#center{position:relative;min-width:0;min-height:0;background:linear-gradient(180deg,#eaf5ff,#f7fbff)}
+canvas#gl{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab}
+canvas#gl:active{cursor:grabbing}
+.pane{padding:11px;border-radius:14px}
+.pane>h4{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);margin-bottom:8px;display:flex;align-items:center;gap:7px;font-weight:800}
+.pane>h4 .badge{margin-left:auto}
+.sub{font-size:11px;color:var(--dim)}
+.kv{display:flex;justify-content:space-between;font-size:11.5px;padding:3px 0}
+.kv b{font-family:var(--mono);color:var(--ink)}
+.bar{height:7px;background:#e3eefb;border-radius:6px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:6px;transition:width .4s}
+.row{display:flex;align-items:center;gap:8px}
+.between{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.urow{display:flex;align-items:center;gap:9px;padding:6px;border-radius:11px;border:1px solid transparent}
+.urow:hover{background:#f4f9ff;border-color:var(--line)}
+.urow .n{font-size:12px;font-weight:700}.urow .r{font-size:10px;color:var(--dim)}
+.pill{font-size:9px;font-weight:800;padding:2px 7px;border-radius:9px}
+.k-admin{background:#ede9fe;color:#6d28d9}.k-sender{background:#e0f2fe;color:#0369a1}.k-recipient{background:#dcfce7;color:#047857}
+.k-hub{background:#fef3c7;color:#b45309}.k-drone_owner{background:#fce7f3;color:#be185d}.k-pilot{background:#fee2e2;color:#b91c1c}.k-regulator{background:#e0e7ff;color:#3730a3}
+.fcard{border:1px solid var(--line);border-radius:13px;padding:9px;background:#fff;cursor:pointer;transition:.15s}
+.fcard:hover{border-color:var(--acc);transform:translateY(-2px);box-shadow:var(--sh)}
+.fcard.sel{border-color:var(--acc);box-shadow:0 0 0 3px rgba(14,165,233,.18)}
+.fcard .fn{font-size:12px;font-weight:800;display:flex;justify-content:space-between;gap:6px;align-items:center}
+.fcard .fs{font-size:10px;color:var(--dim);margin:2px 0 6px}
+.node{display:flex;gap:8px;align-items:center;padding:6px;border-radius:11px}
+.node:hover{background:#f4f9ff}
+.node .ico{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;background:#eaf5ff}
+.node .n{font-size:11.5px;font-weight:700}.node .d{font-size:9.5px;color:var(--dim)}
+.overlay{position:absolute;z-index:12;background:var(--card);border:1px solid var(--line);border-radius:14px;backdrop-filter:blur(12px);box-shadow:var(--sh)}
+#layers{left:12px;top:12px;width:186px;padding:10px}
+#routebox{left:12px;bottom:12px;width:236px;padding:11px;font-size:11px}
+#routebox h5{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-bottom:6px}
+#mmap{right:12px;bottom:12px;width:188px;height:132px;padding:6px}
+#mmap .leaflet-container{border-radius:10px;height:100%}
+#tools{right:12px;top:12px;display:flex;flex-direction:column;gap:6px;padding:6px;border-radius:13px}
+#tools button{width:32px;height:32px;border-radius:10px;background:#fff;border:1px solid var(--line);font-size:14px;display:flex;align-items:center;justify-content:center}
+#tools button:hover{border-color:var(--acc);color:var(--acc)}
+#legend{left:12px;top:12px;margin-top:250px;width:186px;padding:9px;font-size:10.5px}
+.lg{display:flex;align-items:center;gap:6px;padding:2px 0;color:var(--dim)}
+.sw{width:16px;height:9px;border-radius:3px}
+#hudbar{position:absolute;left:12px;right:12px;bottom:150px;height:0}
+#fleetbar{position:absolute;left:12px;right:12px;bottom:12px;display:flex;gap:9px;overflow-x:auto;padding:8px;z-index:11}
+.map{height:150px;border-radius:12px;overflow:hidden;border:1px solid var(--line)}
+.map.tall{height:210px}
+table.dt{width:100%;border-collapse:collapse;font-size:11px}
+table.dt th{text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--mute);padding:6px 5px;border-bottom:1px solid var(--line2)}
+table.dt td{padding:6px 5px;border-bottom:1px solid #eaf2fb;color:var(--dim)}
+table.dt tr:hover td{background:#f4f9ff;color:var(--ink)}
+.alert{display:flex;gap:8px;padding:7px 9px;border-radius:11px;font-size:11px;line-height:1.45;margin-bottom:6px;border:1px solid}
+.a-red{background:#fff1f2;border-color:#fecdd3;color:#9f1239}
+.a-amber{background:#fffbeb;border-color:#fde68a;color:#92400e}
+.a-green{background:#ecfdf5;border-color:#a7f3d0;color:#065f46}
+.a-info{background:#f0f9ff;border-color:#bae6fd;color:#075985}
+.alert .tm{font-family:var(--mono);font-size:9px;opacity:.7;display:block}
+.gauge{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.gauge .g{background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px}
+.gauge .g .v{font-family:var(--mono);font-size:17px;font-weight:700;color:var(--acc)}
+.gauge .g .l{font-size:9.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+#feed{position:relative;height:150px;border-radius:12px;overflow:hidden;background:linear-gradient(180deg,#bfe4ff,#eaf6ff);border:1px solid var(--line)}
+#feedcanvas{width:100%;height:100%;display:block}
+#feed .tag{position:absolute;left:8px;top:8px;font-family:var(--mono);font-size:9.5px;background:rgba(255,255,255,.85);border-radius:7px;padding:2px 7px}
+#feed .rec{position:absolute;right:8px;top:8px;font-size:9.5px;color:#be123c;font-weight:800;display:flex;align-items:center;gap:5px}
+#feed .rec i{width:7px;height:7px;border-radius:50%;background:#f43f5e;animation:pulse 1.2s infinite}
+@keyframes pulse{50%{opacity:.25}}
+.qr{width:96px;height:96px;border-radius:10px;border:1px solid var(--line);background:#fff}
+.mini{font-family:var(--mono);font-size:9.5px;color:var(--mute)}
+#statusbar{height:28px;display:flex;align-items:center;gap:16px;padding:0 14px;background:rgba(255,255,255,.9);border-top:1px solid var(--line);font-family:var(--mono);font-size:10px;color:var(--mute);z-index:30}
+#statusbar b{color:var(--dim)}
+.back{position:fixed;inset:0;background:rgba(15,37,68,.42);backdrop-filter:blur(4px);z-index:90;display:flex;align-items:center;justify-content:center;padding:24px}
+.modal{background:#fff;border-radius:18px;max-width:900px;width:100%;max-height:88vh;overflow:auto;padding:20px;box-shadow:0 24px 60px rgba(15,37,68,.28)}
+.modal.sm{max-width:440px}
+.modal h3{font-size:16px;margin-bottom:3px}
+.modal .msub{font-size:11.5px;color:var(--dim);margin-bottom:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.tile{border:1px solid var(--line);border-radius:12px;padding:10px;background:#fbfdff}
+.tile .t{font-size:10px;text-transform:uppercase;color:var(--dim);letter-spacing:.07em;font-weight:800}
+.tile .v{font-family:var(--mono);font-size:19px;font-weight:700}
+#toasts{position:fixed;top:68px;right:340px;z-index:95;display:flex;flex-direction:column;gap:8px}
+.toast{min-width:250px;padding:10px 13px;border-radius:12px;font-size:12px;background:#fff;border:1px solid var(--line);box-shadow:var(--sh);animation:tin .25s}
+@keyframes tin{from{transform:translateX(24px);opacity:0}}
+#drone3d{width:100%;height:300px;background:linear-gradient(180deg,#f0f9ff,#ffffff);border-radius:14px;border:1px solid var(--line);cursor:grab}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chipx{font-size:10.5px;background:#eaf5ff;border:1px solid var(--line);border-radius:9px;padding:3px 8px;color:var(--dim)}
+.legenddot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.progress{height:6px;background:#e3eefb;border-radius:5px;overflow:hidden}
+.progress i{display:block;height:100%;background:linear-gradient(90deg,#0ea5e9,#10b981);border-radius:5px;transition:width .5s}
+.timeline{position:relative;padding-left:16px}
+.timeline:before{content:'';position:absolute;left:5px;top:4px;bottom:4px;width:2px;background:var(--line2)}
+.tl{position:relative;padding:5px 0;font-size:11px}
+.tl:before{content:'';position:absolute;left:-15px;top:9px;width:8px;height:8px;border-radius:50%;background:var(--acc);border:2px solid #fff;box-shadow:0 0 0 1px var(--line2)}
+@media(max-width:1400px){main#grid{grid-template-columns:230px minmax(0,1fr) 300px}#legend{display:none}}
+@media(max-width:1180px){main#grid{grid-template-columns:220px minmax(0,1fr)}aside.right{display:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="top">
+    <div class="mark">🛩️</div>
+    <div class="brand"><b>sky.m3d.pro · droneDrop</b><div>Urban Airspace Management Platform — v0.2</div></div>
+    <span class="badge b-ok" id="badge-autocfg">AUTOCONFIG: OK</span>
+    <span class="badge b-info" id="badge-db">DYNAMIC DB: ACTIVE</span>
+    <select class="proj" id="proj"></select>
+    <div class="sp"></div>
+    <div class="chip"><span id="eng-clock" class="mini">--:--:--</span></div>
+    <div class="chip"><div class="av" id="av">AS</div><div><div style="font-weight:700;font-size:11.5px" id="me-name">—</div><div class="r" style="font-size:9.5px;color:var(--dim)" id="me-role">—</div></div></div>
+    <button class="btn sec sm" onclick="App.openInstaller()">⚙️ Instalador</button>
+    <button class="btn sec sm" onclick="App.openReports()">📊 Relatórios</button>
+    <button class="btn sec sm" onclick="App.newPackage()">📦 Novo pacote</button>
+    <button class="btn sec sm" onclick="App.logout()">Sair</button>
+  </header>
+
+  <main id="grid">
+    <!-- ================= ESQUERDA ================= -->
+    <aside class="left">
+      <section class="card pane">
+        <h4>System status <span class="badge b-ok" id="st-badge">OK</span></h4>
+        <div class="kv"><span>Autoinstalação</span><b id="st-install">…</b></div>
+        <div class="kv"><span>Schema</span><b id="st-schema">…</b></div>
+        <div class="kv"><span>Banco dinâmico</span><b id="st-size">…</b></div>
+        <div class="kv"><span>Criado em</span><b id="st-created">…</b></div>
+        <div class="row" style="margin-top:8px;gap:6px">
+          <button class="btn sm sec" onclick="App.openInstaller()">Detalhes</button>
+          <button class="btn sm" onclick="App.runInstaller(false)">Revalidar</button>
+        </div>
+      </section>
+
+      <section class="card pane">
+        <h4>Projeto <span class="badge b-info" id="pj-badge">ALPHA</span></h4>
+        <div class="kv"><span>Nome</span><b id="pj-name">—</b></div>
+        <div class="kv"><span>Cidade</span><b id="pj-city">—</b></div>
+        <div class="kv"><span>Missões ativas</span><b id="pj-active">0</b></div>
+      </section>
+
+      <section class="card pane">
+        <h4>1. User management <span class="badge b-grape" id="users-count">0</span></h4>
+        <div id="users" style="display:flex;flex-direction:column;gap:2px"></div>
+      </section>
+
+      <section class="card pane">
+        <h4>2. Fleet status <span class="badge b-info">UAM</span></h4>
+        <div id="fleetside" style="display:flex;flex-direction:column;gap:7px"></div>
+      </section>
+
+      <section class="card pane">
+        <h4>3. Network hubs & pontos</h4>
+        <div id="nodes" style="display:flex;flex-direction:column;gap:2px"></div>
+      </section>
+    </aside>
+
+    <!-- ================= CENTRO ================= -->
+    <section id="center">
+      <canvas id="gl"></canvas>
+
+      <div class="overlay card" id="layers">
+        <h4 style="margin-bottom:6px">Layer manager</h4>
+        <div id="layertoggles"></div>
+        <div style="margin-top:6px">
+          <div class="between" style="font-size:10.5px;color:var(--dim)"><span>Opacidade</span><b id="op-v" class="mini">60%</b></div>
+          <input type="range" id="op" min="10" max="100" value="60">
+        </div>
+      </div>
+
+      <div class="overlay card" id="legend">
+        <h6 style="font-size:10px;text-transform:uppercase;color:var(--dim);margin-bottom:5px">Legenda</h6>
+        <div class="lg"><span class="sw" style="background:#0ea5e9"></span>Corredor autorizado</div>
+        <div class="lg"><span class="sw" style="background:#f59e0b"></span>Zona restrita / limite</div>
+        <div class="lg"><span class="sw" style="background:#10b981"></span>Ponto de recarga</div>
+        <div class="lg"><span class="sw" style="background:#a855f7"></span>Drone em rota</div>
+        <div class="lg"><span class="sw" style="background:#f43f5e"></span>Desvio emergencial</div>
+      </div>
+
+      <div class="overlay card" id="tools">
+        <button title="Reenquadrar" onclick="Scene.reset()">🎯</button>
+        <button title="Órbita automática" onclick="Scene.autoOrbit()">🔄</button>
+        <button title="3D/2D" onclick="Scene.togglePitch()">🧭</button>
+        <button title="Capturar PNG" onclick="Scene.snapshot()">📸</button>
+      </div>
+
+      <div class="overlay card" id="routebox">
+        <h5>En route — triangulação live</h5>
+        <div class="between"><span class="sub">Missão</span><b id="rb-mission" class="mini">—</b></div>
+        <div class="between"><span class="sub">Checkpoint</span><b id="rb-cp" class="mini">—</b></div>
+        <div class="between"><span class="sub">Distância ao destino</span><b id="rb-dist" class="mini">—</b></div>
+        <div class="between"><span class="sub">ETA destino</span><b id="rb-eta" class="mini">—</b></div>
+        <div class="between"><span class="sub">Próximo nó</span><b id="rb-next" class="mini">—</b></div>
+        <div class="between"><span class="sub">Bateria</span><b id="rb-bat" class="mini">—</b></div>
+        <div class="progress" style="margin-top:7px"><i id="rb-bar" style="width:0%"></i></div>
+        <div class="mini" id="rb-nodes" style="margin-top:6px">Nós já visitados: —</div>
+      </div>
+
+      <div class="overlay card" id="mmap"><div id="minimap"></div></div>
+
+      <div id="fleetbar" class="card"></div>
+    </section>
+
+    <!-- ================= DIREITA ================= -->
+    <aside class="right">
+      <section class="card pane">
+        <h4>Monitoring &amp; control</h4>
+
+        <div class="sub" style="font-weight:700;margin-bottom:5px">1. Mapa de triangulação dinâmica</div>
+        <div class="map" id="trimap"></div>
+        <div class="between" style="margin:7px 0 4px"><span class="sub">Incoming / outgoing por nó</span><span class="badge b-info" id="tri-net">saldo 0</span></div>
+        <table class="dt"><thead><tr><th>Nó</th><th>In</th><th>Out</th><th>Saldo</th><th>Ocup.</th></tr></thead><tbody id="tritbl"></tbody></table>
+      </section>
+
+      <section class="card pane">
+        <div class="sub" style="font-weight:700;margin-bottom:5px">2. Análise de rota &amp; desvio</div>
+        <div class="between">
+          <span class="badge b-warn">Emergency reroute</span>
+          <button class="btn sm sun" onclick="App.emergency()">Rerotear agora</button>
+        </div>
+        <div class="kv" style="margin-top:5px"><span>Vento atual</span><b id="wx-wind">—</b></div>
+        <div class="kv"><span>Rotas recalcularadas</span><b id="wx-div">0</b></div>
+        <div class="kv"><span>Relatórios de segurança</span><b id="wx-saf">0</b></div>
+        <div id="divlist" style="margin-top:7px;max-height:118px;overflow:auto"></div>
+      </section>
+
+      <section class="card pane">
+        <div class="sub" style="font-weight:700;margin-bottom:5px">3. Acesso regulatório</div>
+        <div class="row" style="gap:10px;align-items:flex-start">
+          <img class="qr" id="qr-main" alt="QR">
+          <div style="flex:1">
+            <div class="sub" style="font-weight:700">Package manifest</div>
+            <div class="kv"><span>Código</span><b id="mf-code">—</b></div>
+            <div class="kv"><span>Origem</span><b id="mf-orig">—</b></div>
+            <div class="kv"><span>Destino</span><b id="mf-dest">—</b></div>
+            <div class="kv"><span>Conteúdo</span><b id="mf-cont" style="font-size:10px;text-align:right;max-width:120px">—</b></div>
+            <div class="kv"><span>Peso</span><b id="mf-wt">—</b></div>
+            <div class="kv"><span>Nota fiscal</span><b id="mf-nf">—</b></div>
+            <div class="kv"><span>Permissões</span><b id="mf-perm">—</b></div>
+            <div class="kv"><span>Risco</span><b id="mf-risk">—</b></div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
+          <button class="btn sm sec" onclick="App.openTrack()">Rastrear 📍</button>
+          <button class="btn sm sec" onclick="App.openManifest()">Manifesto JSON</button>
+          <button class="btn sm sec" onclick="App.openInvoice()">Nota fiscal</button>
+          <button class="btn sm sec" onclick="App.simulateScan()">Simular leitura RFID</button>
+        </div>
+        <select id="pkgsel" style="margin-top:7px"></select>
+      </section>
+
+      <section class="card pane">
+        <h4>Fleet monitoring &amp; visual coordination</h4>
+
+        <div class="sub" style="font-weight:700;margin-bottom:5px">1. Video feed — reorientável</div>
+        <div id="feed"><canvas id="feedcanvas"></canvas><span class="tag" id="feed-tag">CAM-09 · live 4K</span><span class="rec"><i></i>REC</span></div>
+        <div class="row" style="margin-top:6px;gap:6px">
+          <select id="camsel" style="flex:1"></select>
+          <button class="btn sm sec" onclick="App.reorient(-25)">◀</button>
+          <button class="btn sm sec" onclick="App.reorient(25)">▶</button>
+          <button class="btn sm" onclick="App.zoomCam()">🔍</button>
+        </div>
+
+        <div class="sub" style="font-weight:700;margin:10px 0 5px">2. Drone cockpit view — manual override</div>
+        <div class="between">
+          <span class="mini" id="ck-drone">—</span>
+          <span class="badge b-grape" id="ck-pilot">piloto de plantão</span>
+        </div>
+        <div class="row" style="margin-top:6px;gap:6px;flex-wrap:wrap">
+          <button class="btn sm sun" onclick="App.override('hold')">⏸ Suspender</button>
+          <button class="btn sm mint" onclick="App.override('resume')">▶ Retomar</button>
+          <button class="btn sm rose" onclick="App.override('emergency_landing')">🛬 Pouso emerg.</button>
+          <button class="btn sm sec" onclick="App.openRedirect()">➡️ Redirecionar</button>
+        </div>
+
+        <div class="sub" style="font-weight:700;margin:10px 0 5px">3. Live telemetry</div>
+        <div class="gauge">
+          <div class="g"><div class="v" id="tl-alt">0 m</div><div class="l">Altitude</div></div>
+          <div class="g"><div class="v" id="tl-spd">0 km/h</div><div class="l">Velocidade</div></div>
+          <div class="g"><div class="v" id="tl-hdg">0°</div><div class="l">Heading</div></div>
+          <div class="g"><div class="v" id="tl-bat">0%</div><div class="l">Bateria</div></div>
+          <div class="g"><div class="v" id="tl-sig">0%</div><div class="l">Sinal</div></div>
+          <div class="g"><div class="v" id="tl-eta">0 min</div><div class="l">ETA final</div></div>
+        </div>
+
+        <div class="sub" style="font-weight:700;margin:10px 0 5px">4. Alert log</div>
+        <div id="alerts" style="max-height:170px;overflow:auto"></div>
+      </section>
+    </aside>
+  </main>
+
+  <div id="statusbar">
+    <span>fps <b id="sb-fps">60</b></span><span>ws <b id="sb-ws">conectando</b></span>
+    <span>coord <b id="sb-coord">—</b></span><span>zona <b id="sb-zone">Alpha</b></span>
+    <span>nós <b id="sb-nodes">0</b></span><span>frota <b id="sb-fleet">0</b></span>
+    <span>km voados <b id="sb-km">0</b></span><span>kWh <b id="sb-kwh">0</b></span>
+    <span>banco <b id="sb-db">—</b></span>
+  </div>
+</div>
+<div id="toasts"></div>
+<div id="modals"></div>
+
+<!-- ============ TELA DE INSTALAÇÃO / LOGIN (primeira execução) ============ -->
+<div id="boot" class="back" style="z-index:120">
+  <div class="card" style="max-width:560px;width:100%;padding:26px">
+    <div class="row" style="gap:12px;align-items:center">
+      <div class="mark" style="width:44px;height:44px;font-size:22px">🛩️</div>
+      <div><h3 style="font-size:19px">sky.m3d.pro · droneDrop</h3><div class="sub">Autoinstalação e banco de dados dinâmico</div></div>
+    </div>
+    <div id="boot-steps" style="margin:16px 0;font-size:12px;color:var(--dim)">Verificando instalação…</div>
+    <div class="grid2" id="boot-login" style="display:none">
+      <div><label>Usuário / e-mail</label><input id="lg-user" value="admin@sky.m3d.pro"></div>
+      <div><label>Senha</label><input id="lg-pass" type="password" value="sky2026"></div>
+    </div>
+    <div id="boot-users" style="display:none;margin-top:10px"></div>
+    <div class="row" style="justify-content:flex-end;gap:8px;margin-top:16px">
+      <button class="btn sec" id="boot-reinstall" style="display:none" onclick="App.runInstaller(true)">Reinstalar do zero</button>
+      <button class="btn" id="boot-go" style="display:none" onclick="App.login()">Entrar na plataforma</button>
+      <button class="btn" id="boot-run" onclick="App.runInstaller(false)">Instalar e iniciar</button>
+    </div>
+    <div class="mini" style="margin-top:10px" id="boot-hint"></div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script src="scene3d.js"></script>
+<script src="maps.js"></script>
+<script>App.boot();</script>
+</body>
+</html>

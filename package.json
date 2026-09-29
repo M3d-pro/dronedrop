@@ -1,0 +1,23 @@
+{
+  "name": "skym3d-dronedrop",
+  "version": "0.2.0",
+  "description": "sky.m3d.pro · droneDrop — plataforma de gestão de espaço aéreo urbano e rede de entregas por drone (autoinstalação + banco dinâmico)",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "installer": "node src/installer.js",
+    "reset": "node src/installer.js --force"
+  },
+  "keywords": ["uam", "drone", "delivery", "airspace", "sqlite", "three.js"],
+  "license": "MIT",
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^11.5.0",
+    "express": "^4.21.1",
+    "jsonwebtoken": "^9.0.2",
+    "qrcode": "^1.5.4",
+    "ws": "^8.18.0"
+  }
+}
